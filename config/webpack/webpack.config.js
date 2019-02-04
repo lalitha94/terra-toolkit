@@ -10,6 +10,7 @@ const browserslist = require('browserslist-config-terra');
 const merge = require('webpack-merge');
 const DuplicatePackageCheckerPlugin = require('duplicate-package-checker-webpack-plugin');
 const aggregateTranslations = require('../../scripts/aggregate-translations/aggregate-translations');
+const aggregateThemes = require('../../scripts/aggregate-themes/aggregate-themes');
 
 const webpackConfig = (options, env, argv) => {
   const { rootPath, resolveModules } = options;
@@ -23,6 +24,7 @@ const webpackConfig = (options, env, argv) => {
   const devConfig = {
     mode: 'development',
     entry: {
+      ...env.themOptions && { 'aggregated-themes': 'aggregated-themes/theme.scss' },
       raf: 'raf/polyfill',
       'babel-polyfill': 'babel-polyfill',
     },
@@ -147,6 +149,12 @@ const defaultWebpackConfig = (env = {}, argv = {}) => {
   const rootPath = processPath.includes('packages') ? processPath.split('packages')[0] : processPath;
 
   const resolveModules = ['node_modules'];
+
+  if (env.themeOptions) {
+    aggregateThemes(env.themeOptions);
+    resolveModules.unshift(path.resolve(rootPath, 'aggregated-themes'));
+  }
+
   if (!disableAggregateTranslations) {
     aggregateTranslations(Object.assign({}, { baseDirectory: rootPath }, env.aggregateOptions));
     resolveModules.unshift(path.resolve(rootPath, 'aggregated-translations'));

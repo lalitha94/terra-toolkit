@@ -1,0 +1,9 @@
+$selector: ':root' !default;
+
+@mixin themeStyles {
+  :global {
+    #{$selector} {
+      @content;
+    }
+  }
+}
