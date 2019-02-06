@@ -5,14 +5,20 @@ const { version } = require('../../package.json');
 
 commander
   .version(version)
-  .option('-e, --exclude [exclude]', 'Directories and files to exclude', parseList)
-  .option('-i, --include [include]', 'Directories and files to include', parseList)
-  .option('-t, --theme <theme>', 'The theme name to be aggregated')
+  .option('-b, --baseDir [baseDir]', 'The base directory', process.cwd())
+  .option('-e, --exclude [exclude]', 'A list of glob patterns to exclude', parseList)
+  .option('-i, --include [include]', 'A list of glob patterns to include', parseList)
+  .option('-o, --outputDir [outputDir]', 'The output directory', './aggregated-theme')
+  .option('-s, --scoped', 'Enable only scoped theme aggregation')
+  .option('-t, --theme <theme>', 'Theme name')
   .parse(process.argv);
 
 const options = {
+  baseDir: commander.baseDir,
   exclude: commander.exclude,
   include: commander.include,
+  outputDir: commander.outputDir,
+  scoped: commander.scoped,
   theme: commander.theme,
 };
 
