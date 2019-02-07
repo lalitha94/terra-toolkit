@@ -1,5 +1,6 @@
 const fs = require('fs');
 const glob = require('glob');
+const path = require('path');
 
 /**
  * Aggregates a theme from nested dependencies and specified locations.
@@ -32,12 +33,7 @@ class ThemeAggregator {
     patterns.push(...ThemeAggregator.find(`**/themes/${theme}/`, options));
 
     // Filter the included theme files. Removing duplicates and filtering root and scoped files.
-    const themeFiles = ThemeAggregator.filter(patterns, options);
-
-    console.log(themeFiles);
-
-
-    // ThemeAggregator.writeFile(themeFiles, options);
+    ThemeAggregator.writeFile(ThemeAggregator.filter(patterns, options), options);
   }
 
   /**
@@ -68,7 +64,7 @@ class ThemeAggregator {
       }
     });
 
-    return themeFiles.map(file => file.replace('node_modules/', ''));
+    return ThemeAggregator.resolve(themeFiles, options);// themeFiles.map(file => file.replace('node_modules/', ''));
   }
 
   /**
@@ -96,6 +92,19 @@ class ThemeAggregator {
   }
 
   /**
+   * Determines the file paths relative to the expected output directory.
+   * @param {array} paths - An array of file paths.
+   * @param {Object} options - The aggregation options.
+   * @returns {array} - An array of relative file paths.
+   */
+  static resolve(paths, options) {
+    const { baseDir, outputDir } = options;
+    const outputPath = path.resolve(baseDir, outputDir);
+
+    return paths.map(file => path.relative(outputPath, path.resolve(baseDir, file)));
+  }
+
+  /**
    * Writes a file containing theme imports.
    * @param {array} imports - An array of files to import.
    * @param {Object} options - The aggregation options.
@@ -108,7 +117,7 @@ class ThemeAggregator {
       fs.mkdirSync(outputDir);
     }
 
-    fs.writeFileSync(`${outputDir}${theme}.scss`, file);
+    fs.writeFileSync(`${path.resolve(outputDir, theme)}.js`, file);
   }
 }
 

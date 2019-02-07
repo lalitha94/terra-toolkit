@@ -8,7 +8,7 @@ commander
   .option('-b, --baseDir [baseDir]', 'The base directory', process.cwd())
   .option('-e, --exclude [exclude]', 'A list of glob patterns to exclude', parseList)
   .option('-i, --include [include]', 'A list of glob patterns to include', parseList)
-  .option('-o, --outputDir [outputDir]', 'The output directory', './aggregated-theme')
+  .option('-o, --outputDir [outputDir]', 'The output directory', process.cwd())
   .option('-s, --scoped', 'Enable only scoped theme aggregation')
   .option('-t, --theme <theme>', 'Theme name')
   .parse(process.argv);
