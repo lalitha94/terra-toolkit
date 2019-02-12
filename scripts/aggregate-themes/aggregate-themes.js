@@ -2,11 +2,20 @@ const fs = require('fs');
 const glob = require('glob');
 const path = require('path');
 
+const DISCLAIMER = fs.readFileSync(path.resolve(__dirname, 'disclaimer.txt'), 'utf8');
+const NODE_MODULES = 'node_modules/';
+const OUTPUT = 'aggregated-themes';
+const OUTPUT_DIR = 'aggregated-themes';
+const OUTPUT_PATH = path.resolve(process.cwd(), OUTPUT_DIR);
+
 /**
- * Aggregates a theme from nested dependencies and specified locations.
+ * Aggregates theme assets into a single file.
  *
  * By default the theme will recursively search all dependencies.
- * If a theme directory contains a root-theme.scss only that single file will be aggregated.
+ * If a theme directory contains a root-theme.scss only that single file will be aggregated unless
+ * the theme is scoped.
+ *
+ * Default search patterns are expected to be structured as follows: /themes/theme-name/*
  */
 class ThemeAggregator {
   /**
@@ -16,36 +25,23 @@ class ThemeAggregator {
   static aggregate(options = {}) {
     const {
       theme,
+      scoped = [],
       include = [],
     } = options;
 
-    if (!theme) {
-      throw new Error('A theme must be specified.');
-    }
+    ThemeAggregator.validate(options);
 
-    const patterns = [];
-    // Find the custom include patterns.
+    const assets = ThemeAggregator.find(`**/themes/${theme}/`, options);
+
     include.forEach((pattern) => {
-      patterns.push(...ThemeAggregator.find(pattern, options));
+      assets.push(...ThemeAggregator.find(pattern, options));
     });
 
-    // Find all directories that match the default pattern. /theme/theme-name/
-    patterns.push(...ThemeAggregator.find(`**/themes/${theme}/`, options));
+    scoped.forEach((name) => {
+      assets.push(...ThemeAggregator.find(`**/themes/${name}/scoped-theme.scss`, options));
+    });
 
-    // Filter the included theme files. Removing duplicates and filtering root and scoped files.
-    ThemeAggregator.writeFile(ThemeAggregator.filter(patterns, options), options);
-  }
-
-  /**
-   * Finds files and directories matching a pattern.
-   * @param {string} pattern - A regex pattern.
-   * @param {Object} options - The aggregation options.
-   * @returns {array} - An array of matching file names and directories.
-   */
-  static find(pattern, options) {
-    const { exclude = [] } = options;
-
-    return glob.sync(pattern, { ignore: exclude });
+    ThemeAggregator.writeFile(ThemeAggregator.filter(assets, options), options);
   }
 
   /**
@@ -64,8 +60,9 @@ class ThemeAggregator {
       }
     });
 
-    return ThemeAggregator.resolve(themeFiles, options);// themeFiles.map(file => file.replace('node_modules/', ''));
+    return themeFiles.map(filePath => ThemeAggregator.resolve(filePath, options));
   }
+
 
   /**
    * Filters a directory theme files.
@@ -74,14 +71,6 @@ class ThemeAggregator {
    * @returns {array} - An array of filtered file names.
    */
   static filterDir(dir, options) {
-    const { scoped } = options;
-
-    // Include only the scoped-theme file if one exists and it is not excluded.
-    const scopedFile = ThemeAggregator.find(`${dir}scoped-theme.scss`, options);
-    if (scoped && scopedFile.length === 1) {
-      return scopedFile;
-    }
-
     // Include only the root file if one exists and it is not excluded.
     const rootFile = ThemeAggregator.find(`${dir}root-theme.scss`, options);
     if (rootFile.length === 1) {
@@ -92,32 +81,63 @@ class ThemeAggregator {
   }
 
   /**
-   * Determines the file paths relative to the expected output directory.
-   * @param {array} paths - An array of file paths.
+   * Finds files and directories matching a pattern.
+   * @param {string} pattern - A regex pattern.
    * @param {Object} options - The aggregation options.
-   * @returns {array} - An array of relative file paths.
+   * @returns {array} - An array of matching file names and directories.
    */
-  static resolve(paths, options) {
-    const { baseDir, outputDir } = options;
-    const outputPath = path.resolve(baseDir, outputDir);
+  static find(pattern, options) {
+    const { exclude = [] } = options;
 
-    return paths.map(file => path.relative(outputPath, path.resolve(baseDir, file)));
+    return glob.sync(pattern, { ignore: exclude });
+  }
+
+  /**
+   * Resolves a file path.
+   * Dependency files will resolve to the node_modules directory.
+   * Local files will resolve relative to the expected output directory.
+   * @param {string} filePath - A file path.
+   * @returns {string} - A resolved file path.
+   */
+  static resolve(filePath) {
+    if (filePath.indexOf(NODE_MODULES) > -1) {
+      return filePath.substring(filePath.indexOf(NODE_MODULES) + NODE_MODULES.length);
+    }
+
+    // Constructs the relative path.
+    const outputPath = path.resolve(process.cwd(), OUTPUT_DIR);
+    return path.relative(outputPath, path.resolve(process.cwd(), filePath));
+  }
+
+  /**
+   * Validates the aggregated options.
+   * @param {Object} options - The aggregated options.
+   */
+  static validate(options) {
+    const { theme, scoped } = options;
+
+    if (!theme && scoped) {
+      /* eslint-disable-next-line no-console */
+      console.warn('No default theme as been specified. Aggregating scoped themes.');
+    } else if (!theme && !scoped) {
+      /* eslint-disable-next-line no-console */
+      console.warn('No theme provided.\nExiting process...');
+      process.exit();
+    }
   }
 
   /**
    * Writes a file containing theme imports.
    * @param {array} imports - An array of files to import.
-   * @param {Object} options - The aggregation options.
    */
-  static writeFile(imports, options) {
-    const { outputDir, theme } = options;
+  static writeFile(imports) {
     const file = imports.reduce((acc, s) => `${acc}import '${s}';\n`, '');
 
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir);
+    if (!fs.existsSync(OUTPUT_PATH)) {
+      fs.mkdirSync(OUTPUT_PATH);
     }
 
-    fs.writeFileSync(`${path.resolve(outputDir, theme)}.js`, file);
+    fs.writeFileSync(`${path.resolve(OUTPUT_PATH, OUTPUT)}.js`, `${DISCLAIMER}${file}`);
   }
 }
 
