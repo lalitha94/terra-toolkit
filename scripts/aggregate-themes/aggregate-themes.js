@@ -4,7 +4,7 @@ const path = require('path');
 
 const DISCLAIMER = fs.readFileSync(path.resolve(__dirname, 'disclaimer.txt'), 'utf8');
 const NODE_MODULES = 'node_modules/';
-const OUTPUT = 'aggregated-themes';
+const OUTPUT = 'aggregated-themes.js';
 const OUTPUT_DIR = 'aggregated-themes';
 const OUTPUT_PATH = path.resolve(process.cwd(), OUTPUT_DIR);
 
@@ -19,7 +19,7 @@ const OUTPUT_PATH = path.resolve(process.cwd(), OUTPUT_DIR);
  */
 class ThemeAggregator {
   /**
-   * Aggregates a theme.
+   * Aggregates themes assets.
    * @param {Object} options - The aggregation options.
    */
   static aggregate(options = {}) {
@@ -45,10 +45,10 @@ class ThemeAggregator {
   }
 
   /**
-   * Filters theme files.
-   * @param {array} patterns
-   * @param {Object} options
-   * @returns {array} - An array of filtered file names.
+   * Filters theme assets.
+   * @param {string[]} patterns - An array of directory and file paths.
+   * @param {Object} options - The aggregation options.
+   * @returns {string[]} - An array of file names.
    */
   static filter(patterns, options) {
     const themeFiles = [];
@@ -65,10 +65,10 @@ class ThemeAggregator {
 
 
   /**
-   * Filters a directory theme files.
+   * Filters theme files within a directory.
    * @param {string} dir - The directory path.
    * @param {Object} options - The aggregation options.
-   * @returns {array} - An array of filtered file names.
+   * @returns {string[]} - An array of filtered file names.
    */
   static filterDir(dir, options) {
     // Include only the root file if one exists and it is not excluded.
@@ -84,7 +84,7 @@ class ThemeAggregator {
    * Finds files and directories matching a pattern.
    * @param {string} pattern - A regex pattern.
    * @param {Object} options - The aggregation options.
-   * @returns {array} - An array of matching file names and directories.
+   * @returns {string[]} - An array of matching files and directories.
    */
   static find(pattern, options) {
     const { exclude = [] } = options;
@@ -128,7 +128,7 @@ class ThemeAggregator {
 
   /**
    * Writes a file containing theme imports.
-   * @param {array} imports - An array of files to import.
+   * @param {string[]} imports - An array of files to import.
    */
   static writeFile(imports) {
     const file = imports.reduce((acc, s) => `${acc}import '${s}';\n`, '');
@@ -137,7 +137,7 @@ class ThemeAggregator {
       fs.mkdirSync(OUTPUT_PATH);
     }
 
-    fs.writeFileSync(`${path.resolve(OUTPUT_PATH, OUTPUT)}.js`, `${DISCLAIMER}${file}`);
+    fs.writeFileSync(`${path.resolve(OUTPUT_PATH, OUTPUT)}`, `${DISCLAIMER}${file}`);
   }
 }
 
