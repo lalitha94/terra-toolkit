@@ -38,8 +38,13 @@ class ThemeAggregator {
     });
 
     scoped.forEach((name) => {
+      assets.push(...ThemeAggregator.find(`${NODE_MODULES}${name}/**/scoped-theme.scss`, options));
       assets.push(...ThemeAggregator.find(`**/themes/${name}/scoped-theme.scss`, options));
     });
+
+    if (fs.existsSync(`${NODE_MODULES}${theme}/`)) {
+      assets.unshift(`${NODE_MODULES}${theme}/`);
+    }
 
     ThemeAggregator.writeFile(ThemeAggregator.filter(assets, options), options);
   }
