@@ -13,7 +13,7 @@ const aggregateTranslations = require('../../scripts/aggregate-translations/aggr
 const aggregateThemes = require('../../scripts/aggregate-themes/aggregate-themes');
 
 const webpackConfig = (options, env, argv) => {
-  const { rootPath, resolveModules } = options;
+  const { rootPath, resolveModules, themeFile } = options;
 
   const production = argv.p;
   let filename = production ? '[name]-[chunkhash]' : '[name]';
@@ -24,9 +24,9 @@ const webpackConfig = (options, env, argv) => {
   const devConfig = {
     mode: 'development',
     entry: {
-      ...env.themOptions && { 'aggregated-themes': 'aggregated-themes/theme.scss' },
       raf: 'raf/polyfill',
       'babel-polyfill': 'babel-polyfill',
+      ...themeFile && { theme: themeFile },
     },
     module: {
       rules: [
@@ -150,17 +150,14 @@ const defaultWebpackConfig = (env = {}, argv = {}) => {
 
   const resolveModules = ['node_modules'];
 
-  if (env.themeOptions) {
-    aggregateThemes(env.themeOptions);
-    resolveModules.unshift(path.resolve(rootPath, 'aggregated-themes'));
-  }
-
   if (!disableAggregateTranslations) {
     aggregateTranslations(Object.assign({}, { baseDirectory: rootPath }, env.aggregateOptions));
     resolveModules.unshift(path.resolve(rootPath, 'aggregated-translations'));
   }
 
-  const options = { rootPath, resolveModules };
+  const themeFile = aggregateThemes();
+
+  const options = { rootPath, resolveModules, themeFile };
 
   return webpackConfig(options, env, argv);
 };

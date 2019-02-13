@@ -2,51 +2,51 @@ const fs = require('fs');
 const glob = require('glob');
 const path = require('path');
 
-const DISCLAIMER = fs.readFileSync(path.resolve(__dirname, 'disclaimer.txt'), 'utf8');
+const CONFIG = 'theme.config.js';
 const NODE_MODULES = 'node_modules/';
-const OUTPUT = 'aggregated-themes.js';
-const OUTPUT_DIR = 'aggregated-themes';
-const OUTPUT_PATH = path.resolve(process.cwd(), OUTPUT_DIR);
+const OUTPUT = 'aggregated-theme.js';
+const OUTPUT_PATH = path.resolve(process.cwd());
+const DISCLAIMER = fs.readFileSync(path.resolve(__dirname, 'disclaimer.txt'), 'utf8');
 
 /**
  * Aggregates theme assets into a single file.
  *
  * By default the theme will recursively search all dependencies.
- * If a theme directory contains a root-theme.scss only that single file will be aggregated unless
- * the theme is scoped.
- *
- * Default search patterns are expected to be structured as follows: /themes/theme-name/*
+ * If a theme directory contains a root-theme.scss only that single file will be aggregated.
  */
 class ThemeAggregator {
   /**
-   * Aggregates themes assets.
-   * @param {Object} options - The aggregation options.
+   * Aggregates theme assets.
+   * @returns {string} - The output path of the aggregated theme file.
    */
-  static aggregate(options = {}) {
-    const {
-      theme,
-      scoped = [],
-      include = [],
-    } = options;
+  static aggregate() {
+    const defaultConfig = path.resolve(process.cwd(), CONFIG);
 
-    ThemeAggregator.validate(options);
-
-    const assets = ThemeAggregator.find(`**/themes/${theme}/`, options);
-
-    include.forEach((pattern) => {
-      assets.push(...ThemeAggregator.find(pattern, options));
-    });
-
-    scoped.forEach((name) => {
-      assets.push(...ThemeAggregator.find(`${NODE_MODULES}${name}/**/scoped-theme.scss`, options));
-      assets.push(...ThemeAggregator.find(`**/themes/${name}/scoped-theme.scss`, options));
-    });
-
-    if (fs.existsSync(`${NODE_MODULES}${theme}/`)) {
-      assets.unshift(`${NODE_MODULES}${theme}/`);
+    if (fs.existsSync(defaultConfig)) {
+      // eslint-disable-next-line global-require, import/no-dynamic-require
+      return ThemeAggregator.aggregateTheme(require(defaultConfig));
     }
 
-    ThemeAggregator.writeFile(ThemeAggregator.filter(assets, options), options);
+    return null;
+  }
+
+  /**
+   * Aggregates theme assets.
+   * @param {Object} options - The aggregation options.
+   */
+  static aggregateTheme(options = {}) {
+    ThemeAggregator.validate(options);
+
+    const { theme } = options;
+
+    const dirs = ThemeAggregator.find(`**/themes/${theme}/`, options);
+    const assets = ThemeAggregator.filter(dirs, options);
+
+    if (fs.existsSync(`${NODE_MODULES}${theme}/`)) {
+      assets.unshift(theme);
+    }
+
+    return ThemeAggregator.writeFile(assets, options);
   }
 
   /**
@@ -56,18 +56,17 @@ class ThemeAggregator {
    * @returns {string[]} - An array of file names.
    */
   static filter(patterns, options) {
-    const themeFiles = [];
-    patterns.forEach((pattern) => {
-      if (fs.lstatSync(pattern).isDirectory()) {
-        themeFiles.push(...ThemeAggregator.filterDir(pattern, options));
+    const assets = [];
+    patterns.forEach((asset) => {
+      if (fs.lstatSync(asset).isDirectory()) {
+        assets.push(...ThemeAggregator.filterDir(asset, options));
       } else {
-        themeFiles.push(pattern);
+        assets.push(asset);
       }
     });
 
-    return themeFiles.map(filePath => ThemeAggregator.resolve(filePath, options));
+    return assets.map(asset => ThemeAggregator.resolve(asset, options));
   }
-
 
   /**
    * Filters theme files within a directory.
@@ -110,7 +109,7 @@ class ThemeAggregator {
     }
 
     // Constructs the relative path.
-    const outputPath = path.resolve(process.cwd(), OUTPUT_DIR);
+    const outputPath = path.resolve(process.cwd());
     return path.relative(outputPath, path.resolve(process.cwd(), filePath));
   }
 
@@ -119,12 +118,9 @@ class ThemeAggregator {
    * @param {Object} options - The aggregated options.
    */
   static validate(options) {
-    const { theme, scoped } = options;
+    const { theme } = options;
 
-    if (!theme && scoped) {
-      /* eslint-disable-next-line no-console */
-      console.warn('No default theme as been specified. Aggregating scoped themes.');
-    } else if (!theme && !scoped) {
+    if (!theme) {
       /* eslint-disable-next-line no-console */
       console.warn('No theme provided.\nExiting process...');
       process.exit();
@@ -134,16 +130,16 @@ class ThemeAggregator {
   /**
    * Writes a file containing theme imports.
    * @param {string[]} imports - An array of files to import.
+   * @returns {string} - The filepath of the file.
    */
   static writeFile(imports) {
     const file = imports.reduce((acc, s) => `${acc}import '${s}';\n`, '');
+    const filePath = `${path.resolve(OUTPUT_PATH, OUTPUT)}`;
 
-    if (!fs.existsSync(OUTPUT_PATH)) {
-      fs.mkdirSync(OUTPUT_PATH);
-    }
+    fs.writeFileSync(filePath, `${DISCLAIMER}${file}`);
 
-    fs.writeFileSync(`${path.resolve(OUTPUT_PATH, OUTPUT)}`, `${DISCLAIMER}${file}`);
+    return filePath;
   }
 }
 
-module.exports = options => ThemeAggregator.aggregate(options);
+module.exports = ThemeAggregator.aggregate;
