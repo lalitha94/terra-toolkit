@@ -1,6 +1,7 @@
 const fs = require('fs');
 const glob = require('glob');
 const path = require('path');
+const Logger = require('../utils/logger');
 
 const CONFIG = 'theme.config.js';
 const NODE_MODULES = 'node_modules/';
@@ -33,6 +34,7 @@ class ThemeAggregator {
   /**
    * Aggregates theme assets.
    * @param {Object} options - The aggregation options.
+   * @returns {string} - The output path of the aggregated theme file.
    */
   static aggregateTheme(options = {}) {
     ThemeAggregator.validate(options);
@@ -121,10 +123,11 @@ class ThemeAggregator {
     const { theme } = options;
 
     if (!theme) {
-      /* eslint-disable-next-line no-console */
-      console.warn('No theme provided.\nExiting process...');
+      Logger.warn('No theme provided.\nExiting process...');
       process.exit();
     }
+
+    Logger.log(`Aggregating ${theme}...`);
   }
 
   /**
@@ -137,6 +140,8 @@ class ThemeAggregator {
     const filePath = `${path.resolve(OUTPUT_PATH, OUTPUT)}`;
 
     fs.writeFileSync(filePath, `${DISCLAIMER}${file}`);
+
+    Logger.log(`Successfully generated ${OUTPUT}.`);
 
     return filePath;
   }
